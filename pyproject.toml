@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "warehouse-robot-fleet-telemetry"
+version = "1.0.0"
+description = "Warehouse Robot Fleet Telemetry Platform: MySQL/SQLite 3NF analytics, ESP32 MQTT ingestion, and Tkinter multi-tab dashboard."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Yin1090" }]
+dependencies = [
+    "SQLAlchemy>=2.0,<3.0",
+    "pillow>=10.0",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+mqtt = ["paho-mqtt>=1.6"]
+mysql = ["pymysql>=1.1", "mysql-connector-python>=8.0"]
+dev = ["pytest>=8.0"]
+all = [
+    "paho-mqtt>=1.6",
+    "pymysql>=1.1",
+    "mysql-connector-python>=8.0",
+    "pytest>=8.0",
+]
+
+[project.scripts]
+warehouse-fleet = "warehouse_fleet.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

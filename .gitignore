@@ -1,0 +1,28 @@
+# Python bytecode & caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environments & packaging artifacts
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Secrets & local configuration (keep .env.example and firmware/secrets.h.example tracked)
+.env
+firmware/secrets.h
+
+# Local databases & runtime logs (keep data/ CSVs and PNGs tracked)
+*.db
+*.sqlite
+*.sqlite3
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db

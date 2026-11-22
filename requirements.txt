@@ -1,0 +1,10 @@
+# Core offline runtime & test dependencies
+SQLAlchemy>=2.0,<3.0
+pillow>=10.0
+python-dotenv>=1.0
+pytest>=8.0
+
+# Optional live broker & MySQL drivers (install manually if connecting to Mosquitto / MySQL 8.0):
+# paho-mqtt>=1.6
+# pymysql>=1.1
+# mysql-connector-python>=8.0
