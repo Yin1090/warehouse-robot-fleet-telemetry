@@ -71,12 +71,30 @@ def _ddl_statements(dialect_name: str) -> list[str]:
         suffix = ""
         fk_actions = "ON UPDATE CASCADE ON DELETE RESTRICT"
         fk_set_null = "ON UPDATE CASCADE ON DELETE SET NULL"
+        mysql_idx_sensor = ""
+        mysql_idx_datalog = ""
+        mysql_idx_rr = ""
+        mysql_idx_rml = ""
+        mysql_idx_route = ""
+        mysql_idx_cmd = ""
+        mysql_idx_img = ""
+        mysql_idx_perf = ""
+        mysql_idx_sensorlog = ""
     else:
         int_pk = "INT NOT NULL AUTO_INCREMENT PRIMARY KEY"
         big_pk = "BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY"
         suffix = " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
         fk_actions = "ON UPDATE CASCADE ON DELETE RESTRICT"
         fk_set_null = "ON UPDATE CASCADE ON DELETE SET NULL"
+        mysql_idx_sensor = ",\n            INDEX idx_sensor_robot (robot_id)"
+        mysql_idx_datalog = ",\n            INDEX idx_datalog_robot_time (robot_id, timestamp),\n            INDEX idx_datalog_sensor_time (sensor_id, timestamp)"
+        mysql_idx_rr = ",\n            INDEX idx_rr_robot_time (robot_id, timestamp),\n            INDEX idx_rr_time (timestamp)"
+        mysql_idx_rml = ",\n            INDEX idx_rml_robot_time (robot_id, timestamp),\n            INDEX idx_rml_time (timestamp)"
+        mysql_idx_route = ",\n            INDEX idx_route_robot_time (robot_id, timestamp)"
+        mysql_idx_cmd = ",\n            INDEX idx_cmd_pair_time (sender_id, receiver_id, timestamp),\n            INDEX idx_cmd_time (timestamp)"
+        mysql_idx_img = ",\n            INDEX idx_robot_time (robot_id, timestamp)"
+        mysql_idx_perf = ",\n            INDEX idx_performance_robot_time (robot_id, start_time)"
+        mysql_idx_sensorlog = ",\n            INDEX idx_sensorlog_robot_ts (robot_id, ts_epoch),\n            INDEX idx_sensorlog_created (created_at)"
 
     return [
         f"""
@@ -95,7 +113,7 @@ def _ddl_statements(dialect_name: str) -> list[str]:
             value     DECIMAL(10,2) NULL,
             timestamp DATETIME      NULL,
             CONSTRAINT fk_sensor_robot
-                FOREIGN KEY (robot_id) REFERENCES Robot(robot_id) {fk_actions}
+                FOREIGN KEY (robot_id) REFERENCES Robot(robot_id) {fk_actions}{mysql_idx_sensor}
         ){suffix}
         """,
         "CREATE INDEX IF NOT EXISTS idx_sensor_robot ON Sensor (robot_id)"
@@ -121,7 +139,7 @@ def _ddl_statements(dialect_name: str) -> list[str]:
             CONSTRAINT fk_datalog_robot
                 FOREIGN KEY (robot_id) REFERENCES Robot(robot_id) {fk_actions},
             CONSTRAINT fk_datalog_sensor
-                FOREIGN KEY (sensor_id) REFERENCES Sensor(sensor_id) {fk_actions}
+                FOREIGN KEY (sensor_id) REFERENCES Sensor(sensor_id) {fk_actions}{mysql_idx_datalog}
         ){suffix}
         """,
         "CREATE INDEX IF NOT EXISTS idx_datalog_robot_time ON DataLog (robot_id, timestamp)"
@@ -137,7 +155,7 @@ def _ddl_statements(dialect_name: str) -> list[str]:
             robot_name VARCHAR(50) NOT NULL,
             location   VARCHAR(50) NOT NULL,
             operator   VARCHAR(50) NOT NULL,
-            timestamp  DATETIME    NOT NULL
+            timestamp  DATETIME    NOT NULL{mysql_idx_rr}
         ){suffix}
         """,
         "CREATE INDEX IF NOT EXISTS idx_rr_robot_time ON RobotRoute_raw (robot_id, timestamp)"
@@ -153,7 +171,7 @@ def _ddl_statements(dialect_name: str) -> list[str]:
             robot_name VARCHAR(50) NOT NULL,
             zone       VARCHAR(50) NOT NULL,
             operator   VARCHAR(50) NOT NULL,
-            timestamp  DATETIME    NOT NULL
+            timestamp  DATETIME    NOT NULL{mysql_idx_rml}
         ){suffix}
         """,
         "CREATE INDEX IF NOT EXISTS idx_rml_robot_time ON RobotMoveLog (robot_id, timestamp)"
@@ -172,7 +190,7 @@ def _ddl_statements(dialect_name: str) -> list[str]:
             CONSTRAINT fk_routelog_robot
                 FOREIGN KEY (robot_id) REFERENCES Robot(robot_id) {fk_actions},
             CONSTRAINT fk_routelog_operator
-                FOREIGN KEY (op_id) REFERENCES Operator(op_id) {fk_actions}
+                FOREIGN KEY (op_id) REFERENCES Operator(op_id) {fk_actions}{mysql_idx_route}
         ){suffix}
         """,
         "CREATE INDEX IF NOT EXISTS idx_route_robot_time ON RouteLog (robot_id, timestamp)"
@@ -188,7 +206,7 @@ def _ddl_statements(dialect_name: str) -> list[str]:
             CONSTRAINT fk_cmd_sender
                 FOREIGN KEY (sender_id) REFERENCES Robot(robot_id) {fk_actions},
             CONSTRAINT fk_cmd_receiver
-                FOREIGN KEY (receiver_id) REFERENCES Robot(robot_id) {fk_actions}
+                FOREIGN KEY (receiver_id) REFERENCES Robot(robot_id) {fk_actions}{mysql_idx_cmd}
         ){suffix}
         """,
         "CREATE INDEX IF NOT EXISTS idx_cmd_pair_time ON RobotCommand (sender_id, receiver_id, timestamp)"
@@ -204,7 +222,7 @@ def _ddl_statements(dialect_name: str) -> list[str]:
             img_path  VARCHAR(255) NOT NULL,
             timestamp DATETIME     NOT NULL,
             CONSTRAINT fk_imagedata_robot
-                FOREIGN KEY (robot_id) REFERENCES Robot(robot_id) {fk_actions}
+                FOREIGN KEY (robot_id) REFERENCES Robot(robot_id) {fk_actions}{mysql_idx_img}
         ){suffix}
         """,
         "CREATE INDEX IF NOT EXISTS idx_robot_time ON ImageData (robot_id, timestamp)"
@@ -218,7 +236,7 @@ def _ddl_statements(dialect_name: str) -> list[str]:
             start_time DATETIME     NOT NULL,
             end_time   DATETIME     NOT NULL,
             CONSTRAINT fk_perf_robot
-                FOREIGN KEY (robot_id) REFERENCES Robot(robot_id) {fk_actions}
+                FOREIGN KEY (robot_id) REFERENCES Robot(robot_id) {fk_actions}{mysql_idx_perf}
         ){suffix}
         """,
         "CREATE INDEX IF NOT EXISTS idx_performance_robot_time ON Performance (robot_id, start_time)"
@@ -232,7 +250,7 @@ def _ddl_statements(dialect_name: str) -> list[str]:
             temp_c     DECIMAL(5,2) NOT NULL,
             hum_pct    DECIMAL(5,2) NOT NULL,
             ts_epoch   BIGINT       NOT NULL,
-            created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+            created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP{mysql_idx_sensorlog}
         ){suffix}
         """,
         "CREATE INDEX IF NOT EXISTS idx_sensorlog_robot_ts ON SensorLog (robot_id, ts_epoch)"
@@ -335,8 +353,9 @@ def load_csv_into_table(
     with engine.begin() as conn:
         if replace:
             conn.execute(text(f"DELETE FROM {table_name}"))
-        conn.execute(text(sql), cleaned_rows)
-    return len(cleaned_rows)
+        result = conn.execute(text(sql), cleaned_rows)
+        inserted = result.rowcount
+    return inserted if (inserted is not None and inserted >= 0) else len(cleaned_rows)
 
 
 def seed_performance_demo(engine: Engine, *, replace: bool = True) -> int:
@@ -591,27 +610,41 @@ def seed_routelog_r1_safe(
                 {"rid": robot_id, "d0": day_start, "d1": next_day},
             )
 
-            max_op = 0
+            op_ids: list[int] = []
             if "operator" in table_names:
-                max_op = int(
-                    conn.execute(text(f"SELECT COALESCE(MAX(op_id), 0) FROM {table_names['operator']}")).scalar_one()
-                )
+                op_table = table_names["operator"]
+                op_cols = {c["name"].lower() for c in inspector.get_columns(op_table)}
+                sim_name = f"SIM-{robot_id}"
+                if "name" in op_cols:
+                    existing_ops = [
+                        int(r[0])
+                        for r in conn.execute(
+                            text(f"SELECT op_id FROM {op_table} WHERE name = :sim_name ORDER BY op_id ASC"),
+                            {"sim_name": sim_name},
+                        ).fetchall()
+                    ]
+                    op_ids = existing_ops[: len(times)]
+                    if len(op_ids) < len(times):
+                        max_op = int(
+                            conn.execute(text(f"SELECT COALESCE(MAX(op_id), 0) FROM {op_table}")).scalar_one()
+                        )
+                        needed = len(times) - len(op_ids)
+                        new_ids = [max_op + 1 + idx for idx in range(needed)]
+                        op_rows = [{"op_id": oid, "name": sim_name} for oid in new_ids]
+                        conn.execute(text(insert_ignore_sql(dialect, op_table, ("op_id", "name"))), op_rows)
+                        op_ids.extend(new_ids)
+                else:
+                    max_op = int(
+                        conn.execute(text(f"SELECT COALESCE(MAX(op_id), 0) FROM {op_table}")).scalar_one()
+                    )
+                    op_ids = [max_op + 1 + idx for idx in range(len(times))]
+                    op_rows = [{"op_id": oid} for oid in op_ids]
+                    conn.execute(text(insert_ignore_sql(dialect, op_table, ("op_id",))), op_rows)
             else:
                 max_op = int(
                     conn.execute(text("SELECT COALESCE(MAX(op_id), 0) FROM RouteLog")).scalar_one()
                 )
-
-            op_ids = [max_op + 1 + idx for idx in range(len(times))]
-
-            if "operator" in table_names:
-                op_table = table_names["operator"]
-                op_cols = {c["name"].lower() for c in inspector.get_columns(op_table)}
-                if "name" in op_cols:
-                    op_rows = [{"op_id": oid, "name": f"SIM-{robot_id}"} for oid in op_ids]
-                    conn.execute(text(insert_ignore_sql(dialect, op_table, ("op_id", "name"))), op_rows)
-                else:
-                    op_rows = [{"op_id": oid} for oid in op_ids]
-                    conn.execute(text(insert_ignore_sql(dialect, op_table, ("op_id",))), op_rows)
+                op_ids = [max_op + 1 + idx for idx in range(len(times))]
 
             route_rows = [
                 {

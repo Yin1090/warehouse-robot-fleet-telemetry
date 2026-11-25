@@ -95,14 +95,38 @@ def test_seed_routelog_r1_safe_numeric_and_idempotent(sqlite_engine) -> None:
     assert all(r[4] == "SIM-R1" for r in rows)
     assert all(r[2] in {"A1", "A2", "B1", "B2", "C1", "C2"} for r in rows)
 
-    # Running a second time replaces the same day's R1 rows without duplicating
+    # Running a second time replaces the same day's R1 rows without duplicating RouteLog or leaking Operator rows
+    with sqlite_engine.connect() as conn:
+        op_count_1 = conn.execute(text("SELECT COUNT(*) FROM Operator")).scalar_one()
+
     count2 = seed_routelog_r1_safe(sqlite_engine, day="2025-09-01", seed=42)
     assert count2 == 25
     with sqlite_engine.connect() as conn:
         total = conn.execute(
             text("SELECT COUNT(*) FROM RouteLog WHERE robot_id = 'R1'")
         ).scalar_one()
+        op_count_2 = conn.execute(text("SELECT COUNT(*) FROM Operator")).scalar_one()
     assert total == 25
+    assert op_count_2 == op_count_1
+
+
+def test_mysql_ddl_includes_indexes_and_sql01_seeds_r4(repo_root: Path) -> None:
+    from warehouse_fleet.db import _ddl_statements
+
+    mysql_stmts = [s for s in _ddl_statements("mysql") if s is not None]
+    joined = "\n".join(mysql_stmts)
+    for idx_name in (
+        "idx_sensor_robot",
+        "idx_datalog_robot_time",
+        "idx_rr_robot_time",
+        "idx_route_robot_time",
+        "idx_performance_robot_time",
+        "idx_sensorlog_robot_ts",
+    ):
+        assert idx_name in joined
+
+    sql01 = (repo_root / "sql" / "01_core_erd_schema.sql").read_text(encoding="utf-8")
+    assert "'R4'" in sql01
 
 
 def test_seed_routelog_r1_safe_string_op_id_schema(tmp_path: Path) -> None:

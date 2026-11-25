@@ -34,7 +34,7 @@ class DatabaseConfig:
             dialect=os.getenv("DB_DIALECT", "sqlite").strip().lower(),
             sqlite_path=os.getenv("DB_SQLITE_PATH", "warehouse_fleet.db").strip(),
             host=os.getenv("DB_HOST", "localhost").strip(),
-            port=int(os.getenv("DB_PORT", "3306").strip()),
+            port=int(os.getenv("DB_PORT", "").strip() or "3306"),
             user=os.getenv("DB_USER", "fleet_user").strip(),
             password=os.getenv("DB_PASSWORD", "CHANGE_ME_DB_PASSWORD"),
             database=os.getenv("DB_NAME", "warehouse_fleet").strip(),
@@ -77,7 +77,7 @@ class MqttConfig:
 
         return cls(
             broker=os.getenv("MQTT_BROKER", "localhost").strip(),
-            port=int(os.getenv("MQTT_PORT", "1883").strip()),
+            port=int(os.getenv("MQTT_PORT", "").strip() or "1883"),
             username=os.getenv("MQTT_USER", "fleet_mqtt_user").strip(),
             password=os.getenv("MQTT_PASS", "CHANGE_ME_MQTT_PASSWORD"),
             topic=os.getenv("MQTT_TOPIC", "robot/R1/sensor/dht22").strip(),

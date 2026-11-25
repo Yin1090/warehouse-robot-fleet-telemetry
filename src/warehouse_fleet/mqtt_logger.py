@@ -8,7 +8,7 @@ import logging
 import math
 import time
 from pathlib import Path
-from typing import Callable, Iterable
+from typing import Any, Callable, Iterable
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -137,6 +137,10 @@ class FleetMqttLogger:
                     raise ValueError("robot_id and sensor must be non-empty.")
                 if not (math.isfinite(temp_c) and math.isfinite(hum_pct)):
                     raise ValueError("temp and hum must be finite numbers.")
+                if "distance_mm" in data and data["distance_mm"] is not None:
+                    distance_mm = float(data["distance_mm"])
+                    if not math.isfinite(distance_mm):
+                        raise ValueError("distance_mm must be a finite number.")
                 ts_epoch = int(data.get("ts_epoch", int(time.time())))
             except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
                 msg = f"Malformed telemetry payload on {topic}: {exc}"
@@ -188,7 +192,14 @@ class FleetMqttLogger:
             ) from exc
 
         cfg = config or MqttConfig.from_env()
-        client = mqtt.Client(client_id=cfg.client_id or self.client_id, protocol=mqtt.MQTTv311)
+        client_kwargs: dict[str, Any] = {
+            "client_id": cfg.client_id or self.client_id,
+            "protocol": mqtt.MQTTv311,
+        }
+        callback_api = getattr(mqtt, "CallbackAPIVersion", None)
+        if callback_api is not None:
+            client_kwargs["callback_api_version"] = callback_api.VERSION1
+        client = mqtt.Client(**client_kwargs)
         if cfg.username:
             client.username_pw_set(cfg.username, cfg.password)
 

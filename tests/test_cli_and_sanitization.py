@@ -133,3 +133,20 @@ def test_repository_sanitization_clean(repo_root: Path) -> None:
                 findings.append(f"{rule_name}: {path.relative_to(repo_root)}")
 
     assert findings == []
+
+
+def test_empty_port_env_vars_fall_back_to_defaults(monkeypatch) -> None:
+    from warehouse_fleet.config import DatabaseConfig, MqttConfig
+
+    monkeypatch.setenv("DB_PORT", "")
+    monkeypatch.setenv("MQTT_PORT", "   ")
+    assert DatabaseConfig.from_env().port == 3306
+    assert MqttConfig.from_env().port == 1883
+
+
+def test_cli_query_on_fresh_db_initializes_schema(tmp_path: Path, capsys) -> None:
+    db_file = tmp_path / "fresh_query.db"
+    db_url = f"sqlite:///{db_file.as_posix()}"
+    assert cli.main(["query", "--db-url", db_url, "--preset", "1_robot_sensor_count", "--format", "json"]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out == []

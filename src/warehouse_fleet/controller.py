@@ -46,7 +46,7 @@ class FleetDashboardController:
         self,
         table_name: str,
         *,
-        limit: int = 500,
+        limit: int | None = 500,
         robot_id: str | None = None,
     ) -> QueryResult:
         if table_name not in ALLOWED_TABLES:

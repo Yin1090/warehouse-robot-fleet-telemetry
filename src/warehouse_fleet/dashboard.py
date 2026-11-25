@@ -241,51 +241,63 @@ class WarehouseFleetApp(ttk.Frame):
         self.run_selected_preset()
 
     def refresh_robots(self) -> None:
-        _populate_treeview(self.robots_tree, self.controller.fetch_table("Robot"))
+        _populate_treeview(self.robots_tree, self.controller.fetch_table("Robot", limit=None))
 
     def refresh_sensors(self) -> None:
-        _populate_treeview(self.sensors_tree, self.controller.fetch_table("Sensor"))
-        _populate_treeview(self.sensorlog_tree, self.controller.fetch_table("SensorLog"))
+        _populate_treeview(self.sensors_tree, self.controller.fetch_table("Sensor", limit=None))
+        _populate_treeview(self.sensorlog_tree, self.controller.fetch_table("SensorLog", limit=None))
 
     def refresh_datalogs(self) -> None:
         robot = self.datalog_robot_var.get()
         rid = None if robot == "ALL" else robot
-        _populate_treeview(self.datalogs_tree, self.controller.fetch_table("DataLog", robot_id=rid))
+        _populate_treeview(
+            self.datalogs_tree,
+            self.controller.fetch_table("DataLog", limit=None, robot_id=rid),
+        )
 
     def refresh_routes(self) -> None:
         table = self.route_table_var.get()
-        _populate_treeview(self.routes_tree, self.controller.fetch_table(table))
+        _populate_treeview(self.routes_tree, self.controller.fetch_table(table, limit=None))
 
     def refresh_images(self) -> None:
-        _populate_treeview(self.images_tree, self.controller.fetch_table("ImageData"))
+        _populate_treeview(self.images_tree, self.controller.fetch_table("ImageData", limit=None))
 
     def run_selected_preset(self) -> None:
-        label = self.preset_label_var.get()
-        preset_id = self._preset_map[label]
-        res = self.controller.run_preset(
-            preset_id,
-            robot_id=self.query_robot_var.get().strip() or "R1",
-            target_date=self.query_date_var.get().strip() or "2025-09-01",
-        )
-        self._last_query_result = res
-        _populate_treeview(self.analytics_tree, res)
-        self.status_var.set(f"Query rows: {len(res.rows)}")
+        try:
+            label = self.preset_label_var.get()
+            preset_id = self._preset_map[label]
+            res = self.controller.run_preset(
+                preset_id,
+                robot_id=self.query_robot_var.get().strip() or "R1",
+                target_date=self.query_date_var.get().strip() or "2025-09-01",
+            )
+            self._last_query_result = res
+            _populate_treeview(self.analytics_tree, res)
+            self.status_var.set(f"Query rows: {len(res.rows)}")
+        except Exception as exc:
+            self.status_var.set(f"Error: {exc}")
 
     def _on_simulate_mqtt(self) -> None:
-        inserted = self.controller.simulate_mqtt_sample(
-            robot_id=self.query_robot_var.get().strip() or "R1"
-        )
-        self.refresh_sensors()
-        self.status_var.set(f"Simulated MQTT rows ingested: {inserted}")
+        try:
+            inserted = self.controller.simulate_mqtt_sample(
+                robot_id=self.query_robot_var.get().strip() or "R1"
+            )
+            self.refresh_sensors()
+            self.status_var.set(f"Simulated MQTT rows ingested: {inserted}")
+        except Exception as exc:
+            self.status_var.set(f"Error: {exc}")
 
     def _on_seed_routelog(self) -> None:
-        count = self.controller.seed_routelog_r1(
-            day=self.query_date_var.get().strip() or "2025-09-01",
-            robot_id=self.query_robot_var.get().strip() or "R1",
-        )
-        self.route_table_var.set("RouteLog")
-        self.refresh_routes()
-        self.status_var.set(f"Seeded RouteLog rows: {count}")
+        try:
+            count = self.controller.seed_routelog_r1(
+                day=self.query_date_var.get().strip() or "2025-09-01",
+                robot_id=self.query_robot_var.get().strip() or "R1",
+            )
+            self.route_table_var.set("RouteLog")
+            self.refresh_routes()
+            self.status_var.set(f"Seeded RouteLog rows: {count}")
+        except Exception as exc:
+            self.status_var.set(f"Error: {exc}")
 
     def display_image_path(self, img_path: str) -> bool:
         try:
@@ -314,10 +326,18 @@ class WarehouseFleetApp(ttk.Frame):
         else:
             item_id = selection[0]
         values = self.images_tree.item(item_id, "values")
-        if len(values) < 3:
+        columns = list(self.images_tree["columns"])
+        if "img_path" in columns:
+            path_idx = columns.index("img_path")
+        elif len(values) >= 3:
+            path_idx = 2
+        else:
             self.image_status_var.set("Selected row has no img_path column.")
             return False
-        return self.display_image_path(str(values[2]))
+        if path_idx >= len(values):
+            self.image_status_var.set("Selected row has no img_path column.")
+            return False
+        return self.display_image_path(str(values[path_idx]))
 
     def _export_table_dialog(self, table_name: str) -> None:
         out_file = filedialog.asksaveasfilename(
@@ -327,9 +347,12 @@ class WarehouseFleetApp(ttk.Frame):
             initialfile=f"{table_name}.csv",
         )
         if out_file:
-            res = self.controller.fetch_table(table_name)
-            self.controller.export_csv(res, Path(out_file))
-            self.status_var.set(f"Exported {len(res.rows)} rows to {Path(out_file).name}")
+            try:
+                res = self.controller.fetch_table(table_name, limit=None)
+                self.controller.export_csv(res, Path(out_file))
+                self.status_var.set(f"Exported {len(res.rows)} rows to {Path(out_file).name}")
+            except Exception as exc:
+                self.status_var.set(f"Error: {exc}")
 
     def _export_query_dialog(self) -> None:
         out_file = filedialog.asksaveasfilename(
@@ -339,10 +362,13 @@ class WarehouseFleetApp(ttk.Frame):
             initialfile="query_results.csv",
         )
         if out_file:
-            self.controller.export_csv(self._last_query_result, Path(out_file))
-            self.status_var.set(
-                f"Exported {len(self._last_query_result.rows)} query rows to {Path(out_file).name}"
-            )
+            try:
+                self.controller.export_csv(self._last_query_result, Path(out_file))
+                self.status_var.set(
+                    f"Exported {len(self._last_query_result.rows)} query rows to {Path(out_file).name}"
+                )
+            except Exception as exc:
+                self.status_var.set(f"Error: {exc}")
 
     def _import_csv_dialog(self) -> None:
         in_file = filedialog.askopenfilename(
@@ -350,10 +376,13 @@ class WarehouseFleetApp(ttk.Frame):
             filetypes=[("CSV files", "*.csv")],
         )
         if in_file:
-            table = self.import_table_var.get()
-            count = self.controller.import_csv(table, Path(in_file))
-            self.refresh_all()
-            self.status_var.set(f"Imported {count} rows into {table}")
+            try:
+                table = self.import_table_var.get()
+                count = self.controller.import_csv(table, Path(in_file))
+                self.refresh_all()
+                self.status_var.set(f"Imported {count} rows into {table}")
+            except Exception as exc:
+                self.status_var.set(f"Error: {exc}")
 
 
 def launch_dashboard(

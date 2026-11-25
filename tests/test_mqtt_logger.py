@@ -68,3 +68,51 @@ def test_simulated_bus_replay_and_on_message(tmp_path: Path, data_dir: Path) -> 
         total = conn.execute(text("SELECT COUNT(*) FROM SensorLog")).scalar_one()
     assert total == 13
     engine.dispose()
+
+
+def test_paho_v2_callback_api_version_and_distance_mm(monkeypatch, tmp_path: Path) -> None:
+    import sys
+    from types import ModuleType
+
+    captured_kwargs: dict[str, object] = {}
+
+    class FakeClient:
+        def __init__(self, **kwargs):
+            captured_kwargs.update(kwargs)
+            self.on_connect = None
+            self.on_message = None
+
+        def username_pw_set(self, _u, _p):
+            pass
+
+    fake_paho_mqtt_client = ModuleType("paho.mqtt.client")
+    fake_paho_mqtt_client.MQTTv311 = 4
+    fake_paho_mqtt_client.CallbackAPIVersion = SimpleNamespace(VERSION1="V1")
+    fake_paho_mqtt_client.Client = FakeClient
+    fake_paho_mqtt = ModuleType("paho.mqtt")
+    fake_paho_mqtt.client = fake_paho_mqtt_client
+    fake_paho = ModuleType("paho")
+    fake_paho.mqtt = fake_paho_mqtt
+
+    monkeypatch.setitem(sys.modules, "paho", fake_paho)
+    monkeypatch.setitem(sys.modules, "paho.mqtt", fake_paho_mqtt)
+    monkeypatch.setitem(sys.modules, "paho.mqtt.client", fake_paho_mqtt_client)
+
+    db_file = tmp_path / "mqtt_v2.db"
+    engine = create_fleet_engine(f"sqlite:///{db_file.as_posix()}")
+    init_schema(engine)
+    mqtt_logger = FleetMqttLogger(engine)
+
+    client = mqtt_logger.build_paho_client()
+    assert client is not None
+    assert captured_kwargs.get("callback_api_version") == "V1"
+
+    assert mqtt_logger.handle_message(
+        "robot/R1/sensor/dht22",
+        json.dumps({"robot_id": "R1", "sensor": "DHT22", "temp": 24.0, "hum": 50.0, "distance_mm": 325}),
+    ) is True
+    assert mqtt_logger.handle_message(
+        "robot/R1/sensor/dht22",
+        json.dumps({"robot_id": "R1", "sensor": "DHT22", "temp": 24.0, "hum": 50.0, "distance_mm": float("nan")}),
+    ) is False
+    engine.dispose()

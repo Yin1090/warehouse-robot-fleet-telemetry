@@ -127,6 +127,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "query":
         engine = create_fleet_engine(db_url=args.db_url, config=DatabaseConfig.from_env())
+        init_schema(engine)
         res = run_preset_query(
             engine,
             args.preset,

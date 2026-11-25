@@ -239,7 +239,7 @@ def fetch_table_rows(
     engine: Engine,
     table_name: str,
     *,
-    limit: int = 500,
+    limit: int | None = 500,
     robot_id: str | None = None,
 ) -> QueryResult:
     """Safely fetch rows from an allowlisted fleet table."""
@@ -260,7 +260,7 @@ def fetch_table_rows(
         "SensorLog": "id DESC",
     }
     order_by = order_clauses.get(table_name, "1 ASC")
-    params: dict[str, Any] = {"limit": limit}
+    params: dict[str, Any] = {}
     where_clause = ""
 
     if robot_id and table_name in {
@@ -280,7 +280,12 @@ def fetch_table_rows(
         where_clause = "WHERE sender_id = :robot_id OR receiver_id = :robot_id"
         params["robot_id"] = robot_id
 
-    sql = f"SELECT * FROM {table_name} {where_clause} ORDER BY {order_by} LIMIT :limit"
+    limit_clause = ""
+    if limit is not None:
+        limit_clause = " LIMIT :limit"
+        params["limit"] = limit
+
+    sql = f"SELECT * FROM {table_name} {where_clause} ORDER BY {order_by}{limit_clause}"
     with engine.connect() as conn:
         result = conn.execute(text(sql), params)
         columns = list(result.keys())

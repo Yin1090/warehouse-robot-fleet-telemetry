@@ -41,6 +41,10 @@ def test_controller_allowlist_and_csv_roundtrip(
     robots = ctrl.fetch_table("Robot")
     assert any(r[0] == "R9" for r in robots.rows)
 
+    # Full-table fetch with limit=None does not truncate 1,000-row tables
+    all_routes = ctrl.fetch_table("RobotRoute_raw", limit=None)
+    assert len(all_routes.rows) == 1000
+
 
 def test_controller_image_path_safety_and_missing_file(
     sqlite_engine, repo_root: Path

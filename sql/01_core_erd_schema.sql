@@ -58,11 +58,12 @@ CREATE TABLE IF NOT EXISTS DataLog (
     INDEX idx_datalog_sensor_time (sensor_id, timestamp)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Verified sample seed (including S1/Temp = 28.50 and S2/Camera = NULL)
+-- Verified sample seed (including S1/Temp = 28.50, S2/Camera = NULL, and R4 for benchmarks)
 INSERT IGNORE INTO Robot (robot_id, name, type, year) VALUES
     ('R1', 'AlphaBot', 'AGV',   2023),
     ('R2', 'BetaBot',  'Drone', 2024),
-    ('R3', 'GammaBot', 'AGV',   2024);
+    ('R3', 'GammaBot', 'AGV',   2024),
+    ('R4', 'DeltaBot', 'AGV',   2024);
 
 INSERT IGNORE INTO Operator (op_id, name, shift) VALUES
     (1, 'Operator A', 'Morning'),

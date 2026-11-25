@@ -120,7 +120,7 @@ python -m pytest -q
 ---
 
 ### 2. Kiến trúc & Dữ liệu
-- `sql/01..08.sql`: Toàn bộ script MySQL 8.0 chuẩn cho từng bài toán (ERD, lộ trình thô, lệnh robot, lưu trữ ảnh, hiệu suất `DENSE_RANK`, chuẩn hóa 3NF, `SensorLog`, và 10 truy vấn dashboard).
+- `sql/01..08.sql`: Toàn bộ script MySQL 8.0 chuẩn cho từng bài toán (ERD, lộ trình thô, lệnh robot, lưu trữ ảnh, hiệu suất `DENSE_RANK`, chuẩn hóa 3NF, `SensorLog`, và 8 truy vấn SQL trong `08_preset_dashboard_queries.sql`; Python `queries.py` cung cấp đủ 10 truy vấn preset).
 - `data/RobotRoute.csv`: 1.000 bản ghi di chuyển (`R1..R3`, `Zone A..D`, chu kỳ 5 phút lặp trong cửa sổ 10 giờ).
 - `data/robot_movelog_sample.csv`: 48 bản ghi mẫu cho đội `RB01..RB03`.
 - `data/performance_benchmark.csv`: 1.000 bản ghi tác vụ (250 tác vụ × 4 robot) tái lập chính xác giá trị trung bình 4 chữ số thập phân.
